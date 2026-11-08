@@ -303,11 +303,69 @@ async function openUpload(){
  openModal("uploadModal");
 }
 
-function addModel(){
+
+async function addModel(){
  const name = document.getElementById('modelName').value.trim();
  const desc = document.getElementById('modelDescription').value.trim();
  const price = Number(document.getElementById('modelPrice').value);
  const file = document.getElementById('modelFile').files[0];
+
+ if(!name || !desc || !file || !Number.isFinite(price) || price < 0){
+  alert('Aizpildi visus laukus un izvēlies 3D failu.');
+  return;
+ }
+
+ const {data: userData, error: userError} = await db.auth.getUser();
+
+ if(userError || !userData.user){
+  alert('Vispirms pieslēdzies savam kontam.');
+  return;
+ }
+
+ const user = userData.user;
+ const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+ const filePath = `${user.id}/${crypto.randomUUID()}_${safeName}`;
+
+ try {
+  const {error: uploadError} = await db.storage
+   .from('3d-models')
+   .upload(filePath, file, {upsert: false});
+
+  if(uploadError) throw uploadError;
+
+  const {error: insertError} = await db
+   .from('models')
+   .insert({
+    seller_id: user.id,
+    title: name,
+    description: desc,
+    price: price,
+    file_path: filePath,
+    file_name: file.name
+   });
+
+  if(insertError){
+   await db.storage.from('3d-models').remove([filePath]);
+   throw insertError;
+  }
+
+  products.unshift({name, desc, price, icon:'🧊'});
+  renderProducts();
+  closeModals();
+
+  document.getElementById('modelName').value='';
+  document.getElementById('modelDescription').value='';
+  document.getElementById('modelPrice').value='';
+  document.getElementById('modelFile').value='';
+
+  alert('Modelis veiksmīgi saglabāts!');
+
+ } catch(error) {
+  console.error(error);
+  alert('Neizdevās saglabāt modeli: ' + error.message);
+ }
+}
+
 
  if(!name || !desc || !file || !Number.isFinite(price) || price < 0){
   alert('Aizpildi visus laukus un izvēlies 3D failu.');
