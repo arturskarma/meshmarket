@@ -1,16 +1,19 @@
+Pirms ievietošanas: zemāk esošajā kodā atstāj savu Supabase URL un ievieto savu `sb_publishable_...` atslēgu vietā `IEVIETO_SAVU_PUBLISHABLE_KEY`. Slepeno atslēgu nekādā gadījumā neievieto.
 
+```html
 <!DOCTYPE html>
 <html lang="lv">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MeshMarket — 3D modeļu tirgus</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b0d12;color:#f5f5f7;font-family:Arial,sans-serif}
-header{height:75px;border-bottom:1px solid #252936;display:flex;align-items:center;justify-content:space-between;padding:0 7%;position:sticky;top:0;background:#0b0d12;z-index:5}
+header{min-height:75px;border-bottom:1px solid #252936;display:flex;align-items:center;justify-content:space-between;padding:12px 7%;position:sticky;top:0;background:#0b0d12;z-index:5}
 .logo{font-size:25px;font-weight:800;color:#a78bfa}.logo span{color:white}
-nav{display:flex;gap:24px;align-items:center}
+nav{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
 a{color:#bbb;text-decoration:none}
 button{cursor:pointer;border:0;border-radius:9px;padding:12px 18px;font-weight:bold}
 .primary{background:#8b5cf6;color:white}
@@ -23,7 +26,7 @@ h1{font-size:clamp(38px,6vw,65px);line-height:1.05;margin:18px 0}
 .search{display:flex;gap:10px;margin-top:28px}
 input,select,textarea{background:#171b25;border:1px solid #303647;border-radius:9px;padding:13px;color:white;width:100%}
 .search input{max-width:430px}
-.section-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0;gap:15px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}
 .card{background:#141822;border:1px solid #292e3d;border-radius:15px;overflow:hidden}
 .art{height:175px;display:grid;place-items:center;font-size:75px;background:linear-gradient(135deg,#272044,#171c2b)}
@@ -31,25 +34,36 @@ input,select,textarea{background:#171b25;border:1px solid #303647;border-radius:
 .info h3{margin:0 0 8px}
 .muted{color:#9298a8;font-size:14px}
 .price{font-weight:bold;font-size:19px;color:#c4b5fd}
-.card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:18px}
+.card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:18px;gap:8px}
 .card-bottom button{padding:10px 12px}
 footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b;margin-top:70px}
 .modal{display:none;position:fixed;inset:0;background:#000b;z-index:10;align-items:center;justify-content:center;padding:20px}
 .modal-box{background:#171b25;border:1px solid #34394a;border-radius:16px;padding:25px;width:100%;max-width:440px}
 .modal-box h2{margin-top:0}
 .modal-box input,.modal-box textarea{margin:8px 0 14px}
-.modal-actions{display:flex;gap:10px;margin-top:15px}
+.modal-actions{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}
 #cartCount{background:#8b5cf6;color:white;border-radius:20px;padding:3px 8px;font-size:12px}
-@media(max-width:650px){header{padding:0 16px}nav{gap:10px}nav a{display:none}.hero{padding-top:35px}.search{flex-direction:column}}
+#userStatus{color:#c4b5fd;font-size:13px}
+.message{font-size:14px;line-height:1.5;color:#c4b5fd;min-height:20px}
+@media(max-width:650px){
+ header{padding:12px 16px;align-items:flex-start}
+ nav{gap:8px}
+ nav a{display:none}
+ .hero{padding-top:35px}
+ .search{flex-direction:column}
+ .section-head{align-items:flex-start;flex-direction:column}
+}
 </style>
 </head>
 <body>
+
 <header>
   <div class="logo">Mesh<span>Market</span></div>
   <nav>
     <a href="#catalog">Katalogs</a>
     <a href="#about">Par mums</a>
-    <button class="secondary" onclick="openModal('loginModal')">Pieslēgties</button>
+    <span id="userStatus"></span>
+    <button class="secondary" id="authButton" onclick="openModal('loginModal')">Pieslēgties</button>
     <button class="primary" onclick="showCart()">Grozs <span id="cartCount">0</span></button>
   </nav>
 </header>
@@ -68,7 +82,7 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
 <section id="catalog">
   <div class="section-head">
     <div><div class="tag">ATKLĀJ KO JAUNU</div><h2>Populāri modeļi</h2></div>
-    <button class="secondary" onclick="openModal('uploadModal')">＋ Pievienot modeli</button>
+    <button class="secondary" onclick="openUpload()">＋ Pievienot modeli</button>
   </div>
   <div class="grid" id="productGrid"></div>
 </section>
@@ -84,12 +98,14 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
 
 <div class="modal" id="loginModal">
  <div class="modal-box">
-  <h2>Pieslēgties</h2>
-  <p class="muted">Šī ir demonstrācijas versija.</p>
-  <input type="email" placeholder="E-pasts">
-  <input type="password" placeholder="Parole">
+  <h2 id="authTitle">Pieslēgties</h2>
+  <p class="muted" id="authDescription">Ievadi savu e-pastu un paroli.</p>
+  <input id="authEmail" type="email" placeholder="E-pasts" autocomplete="email">
+  <input id="authPassword" type="password" placeholder="Parole" autocomplete="current-password">
+  <p class="message" id="authMessage"></p>
   <div class="modal-actions">
-   <button class="primary" onclick="alert('Reģistrāciju pieslēgsim nākamajā izstrādes solī!')">Turpināt</button>
+   <button class="primary" id="authSubmit" onclick="submitAuth()">Pieslēgties</button>
+   <button class="secondary" onclick="toggleAuthMode()">Reģistrēties</button>
    <button class="secondary" onclick="closeModals()">Aizvērt</button>
   </div>
  </div>
@@ -103,6 +119,7 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
   <input id="modelPrice" type="number" min="0" step="0.01" placeholder="Cena (€)">
   <label class="muted">3D fails (STL, OBJ, FBX, GLB)</label>
   <input id="modelFile" type="file" accept=".stl,.obj,.fbx,.glb,.gltf">
+  <p class="message">Šī augšupielādes forma vēl ir demonstrācijas režīmā.</p>
   <div class="modal-actions">
    <button class="primary" onclick="addModel()">Pievienot katalogam</button>
    <button class="secondary" onclick="closeModals()">Aizvērt</button>
@@ -111,17 +128,34 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
 </div>
 
 <script>
-let products=[
+// Supabase savienojuma dati
+const SUPABASE_URL = "https://kvgxrblhzvafrhfvwycl.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HcIKFUeWo5ZjMrNkYN54cA_Qhi-qnZU";
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+let authMode = "login";
+
+let products = [
  {name:"Sci-fi Robots",desc:"Futuristisks robota 3D modelis",price:14.99,icon:"🤖"},
  {name:"Modern Chair",desc:"Mūsdienīgs mēbeļu modelis",price:8.50,icon:"🪑"},
  {name:"Sports Car",desc:"Detalizēts sporta auto modelis",price:19.99,icon:"🏎️"},
  {name:"Fantasy Castle",desc:"Fantāzijas pils arhitektūra",price:12.00,icon:"🏰"}
 ];
-let cart=[];
+
+let cart = [];
+
 function renderProducts(){
- const q=document.getElementById('searchInput').value.toLowerCase();
- const list=products.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
- document.getElementById('productGrid').innerHTML=list.map((p,i)=>`
+ const q = document.getElementById('searchInput').value.toLowerCase();
+ const list = products.filter(p =>
+   p.name.toLowerCase().includes(q) ||
+   p.desc.toLowerCase().includes(q)
+ );
+
+ document.getElementById('productGrid').innerHTML = list.map(p => `
  <article class="card">
   <div class="art">${p.icon}</div>
   <div class="info">
@@ -132,31 +166,186 @@ function renderProducts(){
     <button class="primary" onclick="addToCart(${products.indexOf(p)})">Pievienot grozam</button>
    </div>
   </div>
- </article>`).join('')||'<p class="muted">Modeļi nav atrasti.</p>';
+ </article>`).join('') || '<p class="muted">Modeļi nav atrasti.</p>';
 }
-function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function addToCart(i){cart.push(products[i]);document.getElementById('cartCount').textContent=cart.length;}
+
+function escapeHTML(s){
+ return String(s).replace(/[&<>"']/g,c=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
+}
+
+function addToCart(i){
+ cart.push(products[i]);
+ document.getElementById('cartCount').textContent = cart.length;
+}
+
 function showCart(){
- if(!cart.length){alert('Grozs ir tukšs.');return;}
- alert('Tavā grozā:\\n'+cart.map(p=>p.name+' — €'+Number(p.price).toFixed(2)).join('\\n')+'\\n\\nApmaksu pieslēgsim vēlāk.');
+ if(!cart.length){
+  alert('Grozs ir tukšs.');
+  return;
+ }
+ alert('Tavā grozā:\n' +
+ cart.map(p=>p.name+' — €'+Number(p.price).toFixed(2)).join('\n') +
+ '\n\nApmaksu pieslēgsim vēlāk.');
 }
-function openModal(id){document.getElementById(id).style.display='flex';}
-function closeModals(){document.querySelectorAll('.modal').forEach(m=>m.style.display='none');}
+
+function openModal(id){
+ document.getElementById(id).style.display='flex';
+}
+
+function closeModals(){
+ document.querySelectorAll('.modal').forEach(m=>m.style.display='none');
+}
+
+function toggleAuthMode(){
+ authMode = authMode === "login" ? "register" : "login";
+
+ document.getElementById("authTitle").textContent =
+   authMode === "login" ? "Pieslēgties" : "Izveidot kontu";
+
+ document.getElementById("authDescription").textContent =
+   authMode === "login"
+   ? "Ievadi savu e-pastu un paroli."
+   : "Reģistrējies ar savu e-pastu un paroli.";
+
+ document.getElementById("authSubmit").textContent =
+   authMode === "login" ? "Pieslēgties" : "Reģistrēties";
+
+ document.getElementById("authPassword").autocomplete =
+   authMode === "login" ? "current-password" : "new-password";
+
+ document.getElementById("authMessage").textContent = "";
+}
+
+async function submitAuth(){
+ const email = document.getElementById("authEmail").value.trim();
+ const password = document.getElementById("authPassword").value;
+ const message = document.getElementById("authMessage");
+ const submit = document.getElementById("authSubmit");
+
+ if(!email || !password){
+  message.textContent = "Lūdzu, ievadi e-pastu un paroli.";
+  return;
+ }
+
+ if(password.length < 6){
+  message.textContent = "Parolei jābūt vismaz 6 rakstzīmes garai.";
+  return;
+ }
+
+ submit.disabled = true;
+ message.textContent = "Lūdzu, uzgaidi...";
+
+ try {
+  let result;
+
+  if(authMode === "register"){
+   result = await db.auth.signUp({email, password});
+
+   if(!result.error){
+    message.textContent =
+      "Reģistrācija veiksmīga! Ja saņemsi apstiprinājuma e-pastu, atver to, lai aktivizētu kontu.";
+   }
+  } else {
+   result = await db.auth.signInWithPassword({email, password});
+
+   if(!result.error){
+    message.textContent = "Veiksmīgi pieslēdzies!";
+    updateUserStatus(result.data.user);
+    setTimeout(closeModals, 900);
+   }
+  }
+
+  if(result.error){
+   message.textContent = "Kļūda: " + result.error.message;
+  }
+ } catch(error){
+  message.textContent = "Neizdevās izveidot savienojumu. Pārbaudi interneta pieslēgumu.";
+ } finally {
+  submit.disabled = false;
+ }
+}
+
+function updateUserStatus(user){
+ const status = document.getElementById("userStatus");
+ const button = document.getElementById("authButton");
+
+ if(user){
+  status.textContent = user.email;
+  button.textContent = "Iziet";
+  button.onclick = signOut;
+ } else {
+  status.textContent = "";
+  button.textContent = "Pieslēgties";
+  button.onclick = () => openModal("loginModal");
+ }
+}
+
+async function signOut(){
+ const {error} = await db.auth.signOut();
+
+ if(error){
+  alert("Neizdevās iziet no konta: " + error.message);
+  return;
+ }
+
+ updateUserStatus(null);
+ alert("Tu esi izgājis no konta.");
+}
+
+async function openUpload(){
+ const {data} = await db.auth.getUser();
+
+ if(!data.user){
+  alert("Lai pievienotu modeli, vispirms pieslēdzies savam kontam.");
+  openModal("loginModal");
+  return;
+ }
+
+ openModal("uploadModal");
+}
+
 function addModel(){
- const name=document.getElementById('modelName').value.trim();
- const desc=document.getElementById('modelDescription').value.trim();
- const price=Number(document.getElementById('modelPrice').value);
- const file=document.getElementById('modelFile').files[0];
- if(!name||!desc||!file||!Number.isFinite(price)||price<0){alert('Aizpildi visus laukus un izvēlies 3D failu.');return;}
+ const name = document.getElementById('modelName').value.trim();
+ const desc = document.getElementById('modelDescription').value.trim();
+ const price = Number(document.getElementById('modelPrice').value);
+ const file = document.getElementById('modelFile').files[0];
+
+ if(!name || !desc || !file || !Number.isFinite(price) || price < 0){
+  alert('Aizpildi visus laukus un izvēlies 3D failu.');
+  return;
+ }
+
  products.unshift({name,desc,price,icon:'🧊'});
- renderProducts();closeModals();
+ renderProducts();
+ closeModals();
+
  document.getElementById('modelName').value='';
  document.getElementById('modelDescription').value='';
  document.getElementById('modelPrice').value='';
  document.getElementById('modelFile').value='';
- alert('Modelis pievienots šīs demonstrācijas katalogam. Fails vēl netiek augšupielādēts serverī.');
+
+ alert('Modelis pievienots tikai šīs lapas pagaidu demonstrācijas katalogam. Fails vēl netiek saglabāts serverī.');
 }
+
+// Pārbauda, vai lietotājs jau ir pieslēdzies
+async function checkUser(){
+ const {data, error} = await db.auth.getUser();
+
+ if(!error){
+  updateUserStatus(data.user);
+ }
+}
+
+db.auth.onAuthStateChange((event, session) => {
+ updateUserStatus(session?.user || null);
+});
+
 renderProducts();
+checkUser();
 </script>
 </body>
 </html>
+```
+
