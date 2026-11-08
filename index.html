@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="lv">
 <head>
@@ -5,14 +6,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MeshMarket — 3D modeļu tirgus</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b0d12;color:#f5f5f7;font-family:Arial,sans-serif}
 header{min-height:75px;border-bottom:1px solid #252936;display:flex;align-items:center;justify-content:space-between;padding:12px 7%;position:sticky;top:0;background:#0b0d12;z-index:5}
-.logo{font-size:25px;font-weight:800;color:#a78bfa}.logo span{color:white}
+.logo{font-size:25px;font-weight:800;color:#a78bfa}
+.logo span{color:white}
 nav{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
 a{color:#bbb;text-decoration:none}
 button{cursor:pointer;border:0;border-radius:9px;padding:12px 18px;font-weight:bold}
+button:disabled{opacity:.5;cursor:wait}
 .primary{background:#8b5cf6;color:white}
 .secondary{background:#202431;color:white}
 main{max-width:1150px;margin:auto;padding:45px 22px}
@@ -52,6 +56,7 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
 }
 </style>
 </head>
+
 <body>
 
 <header>
@@ -78,7 +83,10 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
 
 <section id="catalog">
   <div class="section-head">
-    <div><div class="tag">ATKLĀJ KO JAUNU</div><h2>Populāri modeļi</h2></div>
+    <div>
+      <div class="tag">ATKLĀJ KO JAUNU</div>
+      <h2>Populāri modeļi</h2>
+    </div>
     <button class="secondary" onclick="openUpload()">＋ Pievienot modeli</button>
   </div>
   <div class="grid" id="productGrid"></div>
@@ -114,18 +122,18 @@ footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b
   <input id="modelName" placeholder="Modeļa nosaukums">
   <textarea id="modelDescription" placeholder="Modeļa apraksts"></textarea>
   <input id="modelPrice" type="number" min="0" step="0.01" placeholder="Cena (€)">
-  <label class="muted">3D fails (STL, OBJ, FBX, GLB)</label>
+  <label class="muted">3D fails (STL, OBJ, FBX, GLB, GLTF)</label>
   <input id="modelFile" type="file" accept=".stl,.obj,.fbx,.glb,.gltf">
-  <p class="message">Šī augšupielādes forma vēl ir demonstrācijas režīmā.</p>
+  <p class="message">Augšupielādē savu 3D modeli. Maksimālais faila izmērs: 50 MB.</p>
   <div class="modal-actions">
-   <button class="primary" onclick="addModel()">Pievienot katalogam</button>
+   <button class="primary" id="uploadButton" onclick="addModel()">Pievienot katalogam</button>
    <button class="secondary" onclick="closeModals()">Aizvērt</button>
   </div>
  </div>
 </div>
 
 <script>
-// Supabase savienojuma dati
+// SUPABASE SAVIENOJUMS
 const SUPABASE_URL = "https://kvgxrblhzvafrhfvwycl.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HcIKFUeWo5ZjMrNkYN54cA_Qhi-qnZU";
 
@@ -134,19 +142,35 @@ const db = window.supabase.createClient(
   SUPABASE_PUBLISHABLE_KEY
 );
 
+// AUTENTIFIKĀCIJA
 let authMode = "login";
 
-let products = [
+// DEMONSTRĀCIJAS MODEĻI
+const demoProducts = [
  {name:"Sci-fi Robots",desc:"Futuristisks robota 3D modelis",price:14.99,icon:"🤖"},
  {name:"Modern Chair",desc:"Mūsdienīgs mēbeļu modelis",price:8.50,icon:"🪑"},
  {name:"Sports Car",desc:"Detalizēts sporta auto modelis",price:19.99,icon:"🏎️"},
  {name:"Fantasy Castle",desc:"Fantāzijas pils arhitektūra",price:12.00,icon:"🏰"}
 ];
 
+let products = [...demoProducts];
 let cart = [];
 
+// DROŠA HTML TEKSTA ATTĒLOŠANA
+function escapeHTML(s){
+ return String(s).replace(/[&<>"']/g,c=>({
+  '&':'&amp;',
+  '<':'&lt;',
+  '>':'&gt;',
+  '"':'&quot;',
+  "'":'&#39;'
+ }[c]));
+}
+
+// KATALOGA ATTĒLOŠANA
 function renderProducts(){
  const q = document.getElementById('searchInput').value.toLowerCase();
+
  const list = products.filter(p =>
    p.name.toLowerCase().includes(q) ||
    p.desc.toLowerCase().includes(q)
@@ -166,13 +190,34 @@ function renderProducts(){
  </article>`).join('') || '<p class="muted">Modeļi nav atrasti.</p>';
 }
 
-function escapeHTML(s){
- return String(s).replace(/[&<>"']/g,c=>({
-  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
- }[c]));
+// IELĀDĒ MODEĻUS NO SUPABASE DATUBĀZES
+async function loadModels(){
+ const {data, error} = await db
+  .from('models')
+  .select('id,title,description,price,created_at')
+  .order('created_at', {ascending:false});
+
+ if(error){
+  console.error('Neizdevās ielādēt modeļus:', error);
+  return;
+ }
+
+ const uploadedProducts = (data || []).map(model => ({
+  id: model.id,
+  name: model.title,
+  desc: model.description || '',
+  price: Number(model.price),
+  icon: '🧊'
+ }));
+
+ products = [...uploadedProducts, ...demoProducts];
+ renderProducts();
 }
 
+// GROZS
 function addToCart(i){
+ if(!products[i]) return;
+
  cart.push(products[i]);
  document.getElementById('cartCount').textContent = cart.length;
 }
@@ -182,11 +227,13 @@ function showCart(){
   alert('Grozs ir tukšs.');
   return;
  }
+
  alert('Tavā grozā:\n' +
  cart.map(p=>p.name+' — €'+Number(p.price).toFixed(2)).join('\n') +
  '\n\nApmaksu pieslēgsim vēlāk.');
 }
 
+// MODĀLIE LOGI
 function openModal(id){
  document.getElementById(id).style.display='flex';
 }
@@ -195,6 +242,7 @@ function closeModals(){
  document.querySelectorAll('.modal').forEach(m=>m.style.display='none');
 }
 
+// REĢISTRĀCIJAS UN PIESLĒGŠANĀS REŽĪMS
 function toggleAuthMode(){
  authMode = authMode === "login" ? "register" : "login";
 
@@ -215,6 +263,7 @@ function toggleAuthMode(){
  document.getElementById("authMessage").textContent = "";
 }
 
+// REĢISTRĀCIJA UN PIESLĒGŠANĀS
 async function submitAuth(){
  const email = document.getElementById("authEmail").value.trim();
  const password = document.getElementById("authPassword").value;
@@ -257,6 +306,7 @@ async function submitAuth(){
   if(result.error){
    message.textContent = "Kļūda: " + result.error.message;
   }
+
  } catch(error){
   message.textContent = "Neizdevās izveidot savienojumu. Pārbaudi interneta pieslēgumu.";
  } finally {
@@ -264,6 +314,7 @@ async function submitAuth(){
  }
 }
 
+// LIETOTĀJA STATUSS
 function updateUserStatus(user){
  const status = document.getElementById("userStatus");
  const button = document.getElementById("authButton");
@@ -279,6 +330,7 @@ function updateUserStatus(user){
  }
 }
 
+// IZRAKSTĪŠANĀS
 async function signOut(){
  const {error} = await db.auth.signOut();
 
@@ -291,10 +343,11 @@ async function signOut(){
  alert("Tu esi izgājis no konta.");
 }
 
+// AUGŠUPIELĀDES LOGA ATVĒRŠANA
 async function openUpload(){
- const {data} = await db.auth.getUser();
+ const {data, error} = await db.auth.getUser();
 
- if(!data.user){
+ if(error || !data.user){
   alert("Lai pievienotu modeli, vispirms pieslēdzies savam kontam.");
   openModal("loginModal");
   return;
@@ -303,45 +356,73 @@ async function openUpload(){
  openModal("uploadModal");
 }
 
-
+// MODEĻA AUGŠUPIELĀDE SUPABASE
 async function addModel(){
  const name = document.getElementById('modelName').value.trim();
  const desc = document.getElementById('modelDescription').value.trim();
- const price = Number(document.getElementById('modelPrice').value);
+ const priceText = document.getElementById('modelPrice').value;
+ const price = Number(priceText);
  const file = document.getElementById('modelFile').files[0];
+ const button = document.getElementById('uploadButton');
 
- if(!name || !desc || !file || !Number.isFinite(price) || price < 0){
+ if(!name || !desc || priceText === '' || !file ||
+    !Number.isFinite(price) || price < 0){
   alert('Aizpildi visus laukus un izvēlies 3D failu.');
   return;
  }
 
- const {data: userData, error: userError} = await db.auth.getUser();
+ const allowedExtensions = ['stl','obj','fbx','glb','gltf'];
+ const extension = file.name.split('.').pop().toLowerCase();
 
- if(userError || !userData.user){
-  alert('Vispirms pieslēdzies savam kontam.');
+ if(!allowedExtensions.includes(extension)){
+  alert('Atļautie failu formāti: STL, OBJ, FBX, GLB un GLTF.');
   return;
  }
 
- const user = userData.user;
- const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
- const filePath = `${user.id}/${crypto.randomUUID()}_${safeName}`;
+ if(file.size > 50 * 1024 * 1024){
+  alert('Fails ir pārāk liels. Maksimālais izmērs ir 50 MB.');
+  return;
+ }
+
+ if(file.size === 0){
+  alert('Izvēlētais fails ir tukšs.');
+  return;
+ }
+
+ button.disabled = true;
+ button.textContent = 'Augšupielādē...';
+
+ let filePath = null;
 
  try {
-  const {error: uploadError} = await db.storage
+  const {data:userData, error:userError} = await db.auth.getUser();
+
+  if(userError || !userData.user){
+   throw new Error('Vispirms pieslēdzies savam kontam.');
+  }
+
+  const user = userData.user;
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+  filePath = `${user.id}/${crypto.randomUUID()}_${safeName}`;
+
+  // Augšupielādē failu privātajā Storage mapē
+  const {error:uploadError} = await db.storage
    .from('3d-models')
-   .upload(filePath, file, {upsert: false});
+   .upload(filePath, file, {upsert:false});
 
   if(uploadError) throw uploadError;
 
-  const {error: insertError} = await db
+  // Saglabā modeļa informāciju datubāzē
+  const {error:insertError} = await db
    .from('models')
    .insert({
-    seller_id: user.id,
-    title: name,
-    description: desc,
-    price: price,
-    file_path: filePath,
-    file_name: file.name
+    seller_id:user.id,
+    title:name,
+    description:desc,
+    price:price,
+    file_path:filePath,
+    file_name:file.name
    });
 
   if(insertError){
@@ -349,42 +430,30 @@ async function addModel(){
    throw insertError;
   }
 
-  products.unshift({name, desc, price, icon:'🧊'});
-  renderProducts();
-  closeModals();
+  // Ielādē katalogu no datubāzes
+  await loadModels();
 
+  // Notīra ievades laukus
   document.getElementById('modelName').value='';
   document.getElementById('modelDescription').value='';
   document.getElementById('modelPrice').value='';
   document.getElementById('modelFile').value='';
+
+  closeModals();
 
   alert('Modelis veiksmīgi saglabāts!');
 
  } catch(error) {
   console.error(error);
   alert('Neizdevās saglabāt modeli: ' + error.message);
+
+ } finally {
+  button.disabled = false;
+  button.textContent = 'Pievienot katalogam';
  }
 }
 
-
- if(!name || !desc || !file || !Number.isFinite(price) || price < 0){
-  alert('Aizpildi visus laukus un izvēlies 3D failu.');
-  return;
- }
-
- products.unshift({name,desc,price,icon:'🧊'});
- renderProducts();
- closeModals();
-
- document.getElementById('modelName').value='';
- document.getElementById('modelDescription').value='';
- document.getElementById('modelPrice').value='';
- document.getElementById('modelFile').value='';
-
- alert('Modelis pievienots tikai šīs lapas pagaidu demonstrācijas katalogam. Fails vēl netiek saglabāts serverī.');
-}
-
-// Pārbauda, vai lietotājs jau ir pieslēdzies
+// PĀRBAUDA, VAI LIETOTĀJS JAU IR PIESLĒDZIES
 async function checkUser(){
  const {data, error} = await db.auth.getUser();
 
@@ -393,14 +462,16 @@ async function checkUser(){
  }
 }
 
+// SEKO AUTENTIFIKĀCIJAS IZMAIŅĀM
 db.auth.onAuthStateChange((event, session) => {
  updateUserStatus(session?.user || null);
 });
 
+// SĀKOTNĒJĀ LAPAS IELĀDE
 renderProducts();
 checkUser();
+loadModels();
+
 </script>
 </body>
 </html>
-```
-
