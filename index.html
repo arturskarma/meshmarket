@@ -1,0 +1,162 @@
+
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshMarket — 3D modeļu tirgus</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b0d12;color:#f5f5f7;font-family:Arial,sans-serif}
+header{height:75px;border-bottom:1px solid #252936;display:flex;align-items:center;justify-content:space-between;padding:0 7%;position:sticky;top:0;background:#0b0d12;z-index:5}
+.logo{font-size:25px;font-weight:800;color:#a78bfa}.logo span{color:white}
+nav{display:flex;gap:24px;align-items:center}
+a{color:#bbb;text-decoration:none}
+button{cursor:pointer;border:0;border-radius:9px;padding:12px 18px;font-weight:bold}
+.primary{background:#8b5cf6;color:white}
+.secondary{background:#202431;color:white}
+main{max-width:1150px;margin:auto;padding:45px 22px}
+.hero{padding:55px 0 65px;max-width:720px}
+.tag{color:#a78bfa;font-weight:bold}
+h1{font-size:clamp(38px,6vw,65px);line-height:1.05;margin:18px 0}
+.hero p{color:#a5a8b4;font-size:18px;line-height:1.6}
+.search{display:flex;gap:10px;margin-top:28px}
+input,select,textarea{background:#171b25;border:1px solid #303647;border-radius:9px;padding:13px;color:white;width:100%}
+.search input{max-width:430px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:20px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}
+.card{background:#141822;border:1px solid #292e3d;border-radius:15px;overflow:hidden}
+.art{height:175px;display:grid;place-items:center;font-size:75px;background:linear-gradient(135deg,#272044,#171c2b)}
+.info{padding:17px}
+.info h3{margin:0 0 8px}
+.muted{color:#9298a8;font-size:14px}
+.price{font-weight:bold;font-size:19px;color:#c4b5fd}
+.card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:18px}
+.card-bottom button{padding:10px 12px}
+footer{border-top:1px solid #252936;padding:28px;text-align:center;color:#858b9b;margin-top:70px}
+.modal{display:none;position:fixed;inset:0;background:#000b;z-index:10;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#171b25;border:1px solid #34394a;border-radius:16px;padding:25px;width:100%;max-width:440px}
+.modal-box h2{margin-top:0}
+.modal-box input,.modal-box textarea{margin:8px 0 14px}
+.modal-actions{display:flex;gap:10px;margin-top:15px}
+#cartCount{background:#8b5cf6;color:white;border-radius:20px;padding:3px 8px;font-size:12px}
+@media(max-width:650px){header{padding:0 16px}nav{gap:10px}nav a{display:none}.hero{padding-top:35px}.search{flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Mesh<span>Market</span></div>
+  <nav>
+    <a href="#catalog">Katalogs</a>
+    <a href="#about">Par mums</a>
+    <button class="secondary" onclick="openModal('loginModal')">Pieslēgties</button>
+    <button class="primary" onclick="showCart()">Grozs <span id="cartCount">0</span></button>
+  </nav>
+</header>
+
+<main>
+<section class="hero">
+  <div class="tag">● 3D MODEĻU TIRGUS</div>
+  <h1>Atrodi. Izveido.<br><span style="color:#a78bfa">Pārdod 3D.</span></h1>
+  <p>Vieta, kur 3D mākslinieki un radītāji satiekas. Atklāj unikālus 3D modeļus saviem projektiem.</p>
+  <div class="search">
+    <input id="searchInput" placeholder="Meklēt 3D modeļus..." oninput="renderProducts()">
+    <button class="primary" onclick="document.getElementById('catalog').scrollIntoView()">Meklēt</button>
+  </div>
+</section>
+
+<section id="catalog">
+  <div class="section-head">
+    <div><div class="tag">ATKLĀJ KO JAUNU</div><h2>Populāri modeļi</h2></div>
+    <button class="secondary" onclick="openModal('uploadModal')">＋ Pievienot modeli</button>
+  </div>
+  <div class="grid" id="productGrid"></div>
+</section>
+
+<section id="about" style="margin-top:65px">
+  <div class="tag">MESHMARKET</div>
+  <h2>Radīts 3D kopienai.</h2>
+  <p class="muted">Atklāj, dalies un pārdod savus digitālos 3D darbus vienuviet.</p>
+</section>
+</main>
+
+<footer>© 2026 MeshMarket · 3D modeļu tirgus</footer>
+
+<div class="modal" id="loginModal">
+ <div class="modal-box">
+  <h2>Pieslēgties</h2>
+  <p class="muted">Šī ir demonstrācijas versija.</p>
+  <input type="email" placeholder="E-pasts">
+  <input type="password" placeholder="Parole">
+  <div class="modal-actions">
+   <button class="primary" onclick="alert('Reģistrāciju pieslēgsim nākamajā izstrādes solī!')">Turpināt</button>
+   <button class="secondary" onclick="closeModals()">Aizvērt</button>
+  </div>
+ </div>
+</div>
+
+<div class="modal" id="uploadModal">
+ <div class="modal-box">
+  <h2>Pievienot 3D modeli</h2>
+  <input id="modelName" placeholder="Modeļa nosaukums">
+  <textarea id="modelDescription" placeholder="Modeļa apraksts"></textarea>
+  <input id="modelPrice" type="number" min="0" step="0.01" placeholder="Cena (€)">
+  <label class="muted">3D fails (STL, OBJ, FBX, GLB)</label>
+  <input id="modelFile" type="file" accept=".stl,.obj,.fbx,.glb,.gltf">
+  <div class="modal-actions">
+   <button class="primary" onclick="addModel()">Pievienot katalogam</button>
+   <button class="secondary" onclick="closeModals()">Aizvērt</button>
+  </div>
+ </div>
+</div>
+
+<script>
+let products=[
+ {name:"Sci-fi Robots",desc:"Futuristisks robota 3D modelis",price:14.99,icon:"🤖"},
+ {name:"Modern Chair",desc:"Mūsdienīgs mēbeļu modelis",price:8.50,icon:"🪑"},
+ {name:"Sports Car",desc:"Detalizēts sporta auto modelis",price:19.99,icon:"🏎️"},
+ {name:"Fantasy Castle",desc:"Fantāzijas pils arhitektūra",price:12.00,icon:"🏰"}
+];
+let cart=[];
+function renderProducts(){
+ const q=document.getElementById('searchInput').value.toLowerCase();
+ const list=products.filter(p=>p.name.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q));
+ document.getElementById('productGrid').innerHTML=list.map((p,i)=>`
+ <article class="card">
+  <div class="art">${p.icon}</div>
+  <div class="info">
+   <h3>${escapeHTML(p.name)}</h3>
+   <div class="muted">${escapeHTML(p.desc)}</div>
+   <div class="card-bottom">
+    <span class="price">€${Number(p.price).toFixed(2)}</span>
+    <button class="primary" onclick="addToCart(${products.indexOf(p)})">Pievienot grozam</button>
+   </div>
+  </div>
+ </article>`).join('')||'<p class="muted">Modeļi nav atrasti.</p>';
+}
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function addToCart(i){cart.push(products[i]);document.getElementById('cartCount').textContent=cart.length;}
+function showCart(){
+ if(!cart.length){alert('Grozs ir tukšs.');return;}
+ alert('Tavā grozā:\\n'+cart.map(p=>p.name+' — €'+Number(p.price).toFixed(2)).join('\\n')+'\\n\\nApmaksu pieslēgsim vēlāk.');
+}
+function openModal(id){document.getElementById(id).style.display='flex';}
+function closeModals(){document.querySelectorAll('.modal').forEach(m=>m.style.display='none');}
+function addModel(){
+ const name=document.getElementById('modelName').value.trim();
+ const desc=document.getElementById('modelDescription').value.trim();
+ const price=Number(document.getElementById('modelPrice').value);
+ const file=document.getElementById('modelFile').files[0];
+ if(!name||!desc||!file||!Number.isFinite(price)||price<0){alert('Aizpildi visus laukus un izvēlies 3D failu.');return;}
+ products.unshift({name,desc,price,icon:'🧊'});
+ renderProducts();closeModals();
+ document.getElementById('modelName').value='';
+ document.getElementById('modelDescription').value='';
+ document.getElementById('modelPrice').value='';
+ document.getElementById('modelFile').value='';
+ alert('Modelis pievienots šīs demonstrācijas katalogam. Fails vēl netiek augšupielādēts serverī.');
+}
+renderProducts();
+</script>
+</body>
+</html>
